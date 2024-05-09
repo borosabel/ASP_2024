@@ -1,8 +1,11 @@
 import os
 import librosa
 import numpy as np
+import pandas as pd
 
 SAMPLING_RATE = 44100
+HOP_LENGTH = 512
+ONSETS_ABS_ERROR_RATE_IN_SECONDS = 0.050
 
 
 def load_dataset_paths(data_folder, is_train_dataset=True):
@@ -37,6 +40,55 @@ def load_dataset_paths(data_folder, is_train_dataset=True):
                     tempo_files_paths.append(tempo_file_path)
 
     return wav_files_paths, beat_files_paths, onset_files_paths, tempo_files_paths
+
+
+def process_audio(row):
+    audio_path = row['File Path']
+    onsets = row['Onsets']
+    y, sr = librosa.load(audio_path, sr=SAMPLING_RATE)
+
+    # Calculate frame length for 100ms frames
+    frame_length = int(0.1 * SAMPLING_RATE)
+    hop_length = frame_length  # No overlap
+
+    # Split audio into frames
+    frames = librosa.util.frame(y, frame_length=frame_length, hop_length=hop_length)
+
+    # Time for each frame
+    frame_times = librosa.frames_to_time(range(frames.shape[1]), sr=SAMPLING_RATE, hop_length=hop_length)
+
+    # Initialize onset frame labels
+    onset_labels = np.zeros(frames.shape[1], dtype=int)
+
+    # Encode onsets in frame format
+    for onset in onsets:
+        # Find the closest frame index to each onset
+        frame_idx = np.argmin(np.abs(frame_times - onset))
+        onset_labels[frame_idx] = 1
+
+    return pd.Series({
+        'frame_times': frame_times,
+        'onset_labels': onset_labels
+    })
+
+
+def get_audio_and_onsets_in_dataframe(data_folder, is_train_dataset=True):
+    wav_files_paths, beat_files_paths, onset_files_paths, tempo_files_paths = load_dataset_paths(data_folder, True)
+    df = pd.DataFrame({'File Path': wav_files_paths})
+    onsets_seconds = []
+    for item in onset_files_paths:
+
+        onset_seconds = []
+        with open(item, 'r') as file:
+            for line in file:
+                onset_time = float(line.strip())
+                onset_seconds.append(onset_time)
+
+        onsets_seconds.append(onset_seconds)
+    df['Onsets'] = onsets_seconds
+
+
+    return df
 
 
 def high_frequency_content(audio_path):
