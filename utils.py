@@ -122,6 +122,36 @@ def load_onsets(onset_paths: list):
     return onsets
 
 
+def load_tempo_annotations(file_path):
+    annotations = []
+
+    with open(file_path, 'r') as file:
+        for line in file:
+            parts = line.strip().split()
+
+            if len(parts) == 1:
+                # Case with one tempo
+                tempo = float(parts[0])
+                annotations.extend(tempo)
+                annotations.extend(1.0)
+            elif len(parts) == 3:
+                annotations.extend(parts)
+            else:
+                raise ValueError(f"Unexpected format in line: {line}")
+
+    return {"tempo": annotations}
+
+
+def load_tempo_annotations_from_files(file_list: list):
+    annotations = {}
+
+    for file_path in file_list:
+        filename = os.path.basename(file_path).replace('.tempo.gt', '')
+        annotations[filename] = load_tempo_annotations(file_path)
+
+    return annotations
+
+
 def make_target(onsets, no_of_frames, sample_rate):
     y = np.zeros(no_of_frames)
     for onset in onsets:
