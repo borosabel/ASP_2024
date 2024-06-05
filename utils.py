@@ -176,28 +176,28 @@ def convert_onset_frames_to_times(onset_signal, sample_rate):
     return np.array(res)
 
 
-def make_frames(spectrogram, onsets, sample_rate):
-    num_window_sizes, n_mels, num_frames = spectrogram.shape
-    half_context = FRAME_LENGTH // 2
-    X_frames = []
-    y_frames = []
+# def make_frames(spectrogram, onsets, sample_rate):
+#     num_window_sizes, n_mels, num_frames = spectrogram.shape
+#     half_context = FRAME_LENGTH // 2
+#     X_frames = []
+#     y_frames = []
 
-    onset_frames = (onsets * sample_rate / HOP_LENGTH).astype(int)
+#     onset_frames = (onsets * sample_rate / HOP_LENGTH).astype(int)
 
-    for onset_frame in onset_frames:
-        for i in [-2, -1, 0, 1, 2]:
-            frame_idx = onset_frame + i
-            if frame_idx - half_context < 0 or frame_idx + half_context >= num_frames:
-                continue
+#     for onset_frame in onset_frames:
+#         for i in [-2, -1, 0, 1, 2]:
+#             frame_idx = onset_frame + i
+#             if frame_idx - half_context < 0 or frame_idx + half_context >= num_frames:
+#                 continue
 
-            frame = spectrogram[:, :, frame_idx - half_context:frame_idx + half_context + 1]
-            X_frames.append(th.tensor(frame, dtype=th.float32))
+#             frame = spectrogram[:, :, frame_idx - half_context:frame_idx + half_context + 1]
+#             X_frames.append(th.tensor(frame, dtype=th.float32))
 
-            # Label is 1 if the onset is in the middle, otherwise 0
-            label = 1 if i == 0 else 0
-            y_frames.append(th.tensor([label], dtype=th.float32))
+#             # Label is 1 if the onset is in the middle, otherwise 0
+#             label = 1 if i == 0 else 0
+#             y_frames.append(th.tensor([label], dtype=th.float32))
 
-    return X_frames, y_frames
+#     return X_frames, y_frames
 
 
 def binary_predictions_to_times(binary_preds, sample_rate):
