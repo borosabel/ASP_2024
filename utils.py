@@ -237,4 +237,50 @@ def evaluate_model(model, features, sample_rates, data_mean, data_std, threshold
 
     return all_preds
 
-#%%
+
+#################### Utils for Tempo ########################
+
+# This is the almost the same as the prediction function in the onset detection but here we just use the onset signal
+# and no prediction
+def raw_onset_signal(model, x, mean=mean, std=std, frame_size=15):
+    model = model.to(device)
+    model.eval()
+    x = x.to(device)
+    mean = mean.to(device)
+    std = std.to(device)
+    x = (x - mean) / std
+
+    half_frame_size = frame_size // 2
+    num_frames = x.shape[2]
+    onset_predictions = []
+
+    with th.no_grad():
+        for j in range(half_frame_size, num_frames - half_frame_size):
+            start = j - half_frame_size
+            end = j + half_frame_size + 1
+            input_frame = x[:, :, start:end].unsqueeze(0).float()
+            output = model(input_frame).squeeze().cpu().item()
+            onset_predictions.append(output)
+    onset_predictions = np.array(onset_predictions)
+    onset_signal = np.convolve(onset_predictions, np.hamming(10), mode='same')
+    return onset_signal
+
+def autocorrelate(signal, lag):
+    r = np.zeros(len(signal) - lag)
+    for t in range(len(signal) - lag):
+        r[t] = signal[t + lag] * signal[t]
+    return np.sum(r)
+
+def to_bpm(max_r):
+    return 60 * SAMPLING_RATE / HOP_LENGTH / (max_r + 25)
+
+def autocorrelate_tao(signal, min_tao=25, max_tao=87):
+    return np.array([autocorrelate(signal, tao) for tao in range(min_tao, max_tao)])
+
+def get_tempo(model, x, top_n=2):
+    onset_signal_res = raw_onset_signal(model, x)
+    taos = autocorrelate_tao(onset_signal_res)
+    peaks = find_peaks(taos)[0]
+    highest_peaks = np.argsort(-taos[peaks])[:top_n]
+
+    return list(reversed([to_bpm(r) for r in peaks[highest_peaks]]))
