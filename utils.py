@@ -242,7 +242,7 @@ def evaluate_model(model, features, sample_rates, data_mean, data_std, threshold
 
 # This is the almost the same as the prediction function in the onset detection but here we just use the onset signal
 # and no prediction
-def raw_onset_signal(model, x, mean=mean, std=std, frame_size=15):
+def raw_onset_signal(model, x, mean, std, device, frame_size=15):
     model = model.to(device)
     model.eval()
     x = x.to(device)
@@ -277,8 +277,8 @@ def to_bpm(max_r):
 def autocorrelate_tao(signal, min_tao=25, max_tao=87):
     return np.array([autocorrelate(signal, tao) for tao in range(min_tao, max_tao)])
 
-def get_tempo(model, x, top_n=2):
-    onset_signal_res = raw_onset_signal(model, x)
+def get_tempo(model, x, mean, std, device, top_n=2):
+    onset_signal_res = raw_onset_signal(model, x, mean, std, device)
     taos = autocorrelate_tao(onset_signal_res)
     peaks = find_peaks(taos)[0]
     highest_peaks = np.argsort(-taos[peaks])[:top_n]
